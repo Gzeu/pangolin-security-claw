@@ -1,0 +1,10 @@
+{
+  "name": "Pangolin Guard",
+  "slug": "pangolin-security-claw",
+  "version": "1.0.0",
+  "description": "Skill pentru interacțiunea cu dashboard-ul de securitate biomimetic Pangolin-Guard OS. Protejează, scanează rețeaua și carantinează procese invazive.",
+  "author": "Gzeu",
+  "permissions": ["network", "shell"],
+  "entrypoint": "index.js",
+  "tags": ["security", "dashboard", "api", "monitoring"]
+}
