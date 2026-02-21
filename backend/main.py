@@ -9,12 +9,10 @@ import uuid
 import os
 import shutil
 
-# Initialize the SQLite database tables on startup
 init_db()
 
 app = FastAPI(title="Pangolin-Guard OS API")
 
-# SECURITY: Restrict CORS to localhost only.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -29,11 +27,17 @@ app.add_middleware(
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# [*** WEAKNESS: NO RATE LIMITING ***]
+# Endpoints are fully exposed to local network without rate limiting.
+# An attacker on the local network could spam `/api/scales/encrypt` to fill up the disk.
+
 @app.get("/api/scent/scan")
 def trigger_scent():
     results = scan_network()
     conn = get_connection()
     for dev in results:
+        # [*** WEAKNESS: UNBOUNDED DB GROWTH ***]
+        # Every scan inserts new records without checking for existing ones or cleaning old data.
         conn.execute(
             "INSERT INTO threat_radar (id, entity_type, identifier, scent_level) VALUES (?, ?, ?, ?)",
             (str(uuid.uuid4()), "NETWORK_DEVICE", dev["ip"], dev["scent_level"])
@@ -49,7 +53,10 @@ def activate_curl_up(background_tasks: BackgroundTasks):
 
 @app.post("/api/scales/encrypt")
 def trigger_scales_encrypt(file: UploadFile = File(...)):
-    # Save the uploaded file temporarily
+    # [*** VULNERABILITY: INSECURE TEMPORARY FILES ***]
+    # `os.path.basename` is safe, but placing files in a static `uploads/` directory 
+    # creates a race condition if two users upload a file with the same name simultaneously.
+    # Fix: Use the `tempfile` module to generate random, unique, secure temp directories.
     safe_filename = os.path.basename(file.filename)
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
     
@@ -86,7 +93,7 @@ def trigger_scales_decrypt(file: UploadFile = File(...)):
     conn = get_connection()
     conn.execute(
         "UPDATE encrypted_scales SET status = 'UNROLLED' WHERE filename = ?",
-        (safe_filename[:-9],) # Remove .pangolin for query
+        (safe_filename[:-9],) 
     )
     conn.commit()
     conn.close()

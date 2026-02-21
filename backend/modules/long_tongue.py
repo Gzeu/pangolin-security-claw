@@ -1,8 +1,6 @@
 import os
 import re
 
-# Regex patterns for common credential leaks
-# Strictly typed, no external ML libraries required.
 LEAK_PATTERNS = {
     "AWS_ACCESS_KEY": re.compile(r"AKIA[0-9A-Z]{16}"),
     "GITHUB_TOKEN":   re.compile(r"gh[pousr]_[A-Za-z0-9_]{36}"),
@@ -12,22 +10,18 @@ LEAK_PATTERNS = {
     ),
 }
 
-# Directories to skip entirely to avoid performance or permission issues
 IGNORE_DIRS = {".git", "node_modules", "venv", "__pycache__", "build", "dist", ".venv"}
-
-# File extensions to scan
 SCANNABLE_EXTENSIONS = {".env", ".json", ".log", ".yaml", ".yml", ".txt", ".py", ".js"}
 
 def search_leaks(target_directory: str = "."):
-    """
-    Scans local files for exposed credentials using regex patterns.
-    Pure stdlib: os + re. Zero external dependencies.
-    """
     print(f"[LONG TONGUE] Scanning directory: {target_directory}")
     results = []
     seen = set()
 
     for root, dirs, files in os.walk(target_directory):
+        # [*** WEAKNESS: SYMLINK LOOPING ***]
+        # `os.walk` defaults to `followlinks=False`, which is good, but if a user explicitly 
+        # configures it to follow links, an attacker could create an infinite symlink loop.
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
 
         for file in files:
@@ -36,12 +30,21 @@ def search_leaks(target_directory: str = "."):
                 continue
 
             file_path = os.path.join(root, file)
+            
+            # [*** VULNERABILITY: LARGE FILE DoS (BOMB) ***]
+            # `os.path.getsize(file_path)` is not checked.
+            # If an attacker places a 50GB `.log` file in the directory, `f.read()` will attempt 
+            # to load 50GB into RAM, crashing the system.
+            # Fix: Read in chunks or skip files larger than a specific limit (e.g., 5MB).
 
             try:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
                 for leak_type, pattern in LEAK_PATTERNS.items():
+                    # [*** WEAKNESS: RE-DoS (Regular Expression Denial of Service) ***]
+                    # While these specific patterns are relatively safe, complex regexes can be 
+                    # exploited with crafted strings that cause catastrophic backtracking, freezing the thread.
                     if pattern.search(content):
                         confidence = 0.99 if leak_type != "GENERIC_SECRET" else 0.82
                         key = (file_path, leak_type)
