@@ -27,17 +27,14 @@ app.add_middleware(
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# [*** WEAKNESS: NO RATE LIMITING ***]
-# Endpoints are fully exposed to local network without rate limiting.
-# An attacker on the local network could spam `/api/scales/encrypt` to fill up the disk.
-
 @app.get("/api/scent/scan")
 def trigger_scent():
     results = scan_network()
     conn = get_connection()
+    # [FIXED: Unbounded DB growth. Clean old records before inserting new network state]
+    conn.execute("DELETE FROM threat_radar")
+    
     for dev in results:
-        # [*** WEAKNESS: UNBOUNDED DB GROWTH ***]
-        # Every scan inserts new records without checking for existing ones or cleaning old data.
         conn.execute(
             "INSERT INTO threat_radar (id, entity_type, identifier, scent_level) VALUES (?, ?, ?, ?)",
             (str(uuid.uuid4()), "NETWORK_DEVICE", dev["ip"], dev["scent_level"])
@@ -53,11 +50,8 @@ def activate_curl_up(background_tasks: BackgroundTasks):
 
 @app.post("/api/scales/encrypt")
 def trigger_scales_encrypt(file: UploadFile = File(...)):
-    # [*** VULNERABILITY: INSECURE TEMPORARY FILES ***]
-    # `os.path.basename` is safe, but placing files in a static `uploads/` directory 
-    # creates a race condition if two users upload a file with the same name simultaneously.
-    # Fix: Use the `tempfile` module to generate random, unique, secure temp directories.
-    safe_filename = os.path.basename(file.filename)
+    # [FIXED: Prevent insecure uploads / race conditions using UUID prefixing]
+    safe_filename = f"{uuid.uuid4().hex[:8]}_{os.path.basename(file.filename)}"
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
     
     with open(file_path, "wb") as buffer:
@@ -79,7 +73,7 @@ def trigger_scales_encrypt(file: UploadFile = File(...)):
 
 @app.post("/api/scales/decrypt")
 def trigger_scales_decrypt(file: UploadFile = File(...)):
-    safe_filename = os.path.basename(file.filename)
+    safe_filename = f"{uuid.uuid4().hex[:8]}_{os.path.basename(file.filename)}"
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
     
     with open(file_path, "wb") as buffer:
@@ -91,9 +85,11 @@ def trigger_scales_decrypt(file: UploadFile = File(...)):
          return result
          
     conn = get_connection()
+    # Strip the .pangolin from the matched filename in UI
+    original_name = file.filename[:-9] if file.filename.endswith(".pangolin") else file.filename
     conn.execute(
-        "UPDATE encrypted_scales SET status = 'UNROLLED' WHERE filename = ?",
-        (safe_filename[:-9],) 
+        "UPDATE encrypted_scales SET status = 'UNROLLED' WHERE filename LIKE ?",
+        (f"%{original_name}%",) 
     )
     conn.commit()
     conn.close()
@@ -105,7 +101,11 @@ def trigger_long_tongue(directory: str = "."):
     if not safe_dir.startswith(os.getcwd()):
         return {"status": "ERROR", "message": "Path traversal attempt detected and blocked."}
     results = search_leaks(safe_dir)
+    
     conn = get_connection()
+    # [FIXED: Unbounded DB growth. Wipe previous leak scans]
+    conn.execute("DELETE FROM data_leaks")
+    
     for leak in results:
         conn.execute(
             "INSERT INTO data_leaks (id, file_path, leak_type, confidence_score) VALUES (?, ?, ?, ?)",

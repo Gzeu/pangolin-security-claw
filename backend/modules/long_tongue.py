@@ -12,16 +12,15 @@ LEAK_PATTERNS = {
 
 IGNORE_DIRS = {".git", "node_modules", "venv", "__pycache__", "build", "dist", ".venv"}
 SCANNABLE_EXTENSIONS = {".env", ".json", ".log", ".yaml", ".yml", ".txt", ".py", ".js"}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # [FIXED: 5MB strict limit to prevent RAM exhaustion DoS]
 
 def search_leaks(target_directory: str = "."):
     print(f"[LONG TONGUE] Scanning directory: {target_directory}")
     results = []
     seen = set()
 
-    for root, dirs, files in os.walk(target_directory):
-        # [*** WEAKNESS: SYMLINK LOOPING ***]
-        # `os.walk` defaults to `followlinks=False`, which is good, but if a user explicitly 
-        # configures it to follow links, an attacker could create an infinite symlink loop.
+    # [FIXED: Explicit followlinks=False to prevent infinite symlink looping]
+    for root, dirs, files in os.walk(target_directory, followlinks=False):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
 
         for file in files:
@@ -31,32 +30,33 @@ def search_leaks(target_directory: str = "."):
 
             file_path = os.path.join(root, file)
             
-            # [*** VULNERABILITY: LARGE FILE DoS (BOMB) ***]
-            # `os.path.getsize(file_path)` is not checked.
-            # If an attacker places a 50GB `.log` file in the directory, `f.read()` will attempt 
-            # to load 50GB into RAM, crashing the system.
-            # Fix: Read in chunks or skip files larger than a specific limit (e.g., 5MB).
+            if os.path.islink(file_path):
+                continue # Skip explicit symlink files
 
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
+                # Limit file size strictly
+                if os.path.getsize(file_path) > MAX_FILE_SIZE:
+                    continue 
 
-                for leak_type, pattern in LEAK_PATTERNS.items():
-                    # [*** WEAKNESS: RE-DoS (Regular Expression Denial of Service) ***]
-                    # While these specific patterns are relatively safe, complex regexes can be 
-                    # exploited with crafted strings that cause catastrophic backtracking, freezing the thread.
-                    if pattern.search(content):
-                        confidence = 0.99 if leak_type != "GENERIC_SECRET" else 0.82
-                        key = (file_path, leak_type)
-                        if key not in seen:
-                            seen.add(key)
-                            results.append({
-                                "file": file_path,
-                                "leak_type": leak_type,
-                                "confidence_score": confidence
-                            })
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    # [FIXED: Read line-by-line to prevent massive memory spikes and mitigate ReDoS]
+                    for line in f:
+                        if len(line) > 2000:
+                            continue # Skip highly minified/encoded lines which trigger ReDoS
+                            
+                        for leak_type, pattern in LEAK_PATTERNS.items():
+                            if pattern.search(line):
+                                confidence = 0.99 if leak_type != "GENERIC_SECRET" else 0.82
+                                key = (file_path, leak_type)
+                                if key not in seen:
+                                    seen.add(key)
+                                    results.append({
+                                        "file": file_path,
+                                        "leak_type": leak_type,
+                                        "confidence_score": confidence
+                                    })
             except PermissionError:
-                print(f"[LONG TONGUE] Permission denied: {file_path}")
+                pass
             except Exception as e:
                 print(f"[LONG TONGUE] Error reading {file_path}: {e}")
 
