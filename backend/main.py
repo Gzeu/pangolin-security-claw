@@ -22,6 +22,8 @@ app.add_middleware(
 
 @app.get("/api/scent/scan")
 def trigger_scent(db: Session = Depends(get_db)):
+    # In a real scenario, you might want to dynamically detect the subnet.
+    # Defaulting to a common local subnet for demonstration.
     results = scan_network("192.168.1.0/24")
     # Save to DB
     for dev in results:
@@ -36,15 +38,12 @@ def trigger_scent(db: Session = Depends(get_db)):
 
 @app.post("/api/curl-up/activate")
 def activate_curl_up(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    # Passing DB session is complex for background tasks without scope management, 
-    # keeping it simple for now. The watchdog will log to DB internally in the future.
     background_tasks.add_task(monitor_processes)
     return {"status": "ARMORED", "message": "Pangolin entered defensive mode (Curl-Up)."}
 
 @app.post("/api/scales/encrypt")
 def trigger_scales(file_path: str = "default_document.txt", db: Session = Depends(get_db)):
     result = encrypt_file_scales(file_path)
-    # Save to DB
     db_scale = models.EncryptedScale(
         original_filename=file_path,
         total_chunks=result["total_scales"],
@@ -55,8 +54,8 @@ def trigger_scales(file_path: str = "default_document.txt", db: Session = Depend
     return {"status": "ENCRYPTED", "details": result}
 
 @app.get("/api/long-tongue/search")
-def trigger_long_tongue(query: str, db: Session = Depends(get_db)):
-    results = search_leaks(query)
+def trigger_long_tongue(directory: str = ".", db: Session = Depends(get_db)):
+    results = search_leaks(directory)
     # Save to DB
     for leak in results:
         db_leak = models.DataLeak(
