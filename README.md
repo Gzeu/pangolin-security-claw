@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="Pangolin Security Claw" width="600"/>
+<img src="https://raw.githubusercontent.com/Gzeu/pangolin-security-claw/main/assets/logo.png" alt="Pangolin Security Claw" width="600"/>
 
 # Pangolin Security Claw
 
