@@ -1,6 +1,8 @@
-fastapi
-uvicorn
-psutil
-scapy
-pycryptodome
-sqlalchemy
+# Pangolin-Guard OS - Pinned Dependencies (supply-chain safe)
+# NEVER add a dependency without security review.
+# Each library here is the minimal set required for core functionality.
+
+fastapi==0.111.0
+uvicorn==0.30.1
+psutil==5.9.8
+pycryptodome==3.20.0

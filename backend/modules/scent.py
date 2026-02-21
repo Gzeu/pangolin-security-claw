@@ -1,70 +1,75 @@
-from scapy.all import srp, Ether, ARP
+import subprocess
 import socket
-import struct
+import platform
+import re
 
-def get_default_gateway_ip():
-    """Attempt to find the default gateway to guess the local subnet."""
+def get_local_subnet():
+    """Detect the local machine's IP to determine the /24 subnet."""
     try:
-        # A simple hack to get the local IP address
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
+        ip = s.getsockname()[0]
         s.close()
-        return local_ip
+        subnet = ip.rsplit('.', 1)[0]
+        return subnet, ip
     except Exception:
-        return "192.168.1.1"
+        return "192.168.1", "192.168.1.1"
 
-def scan_network(ip_range: str = None):
+def parse_arp_table():
     """
-    Discovers devices on the network using actual ARP packets.
-    Requires Root/Administrator privileges to execute successfully.
+    Reads the system ARP cache using the native 'arp' command.
+    No third-party library required. Works on Linux, macOS, and Windows.
+    Uses stdlib subprocess with a strict allowlist — no shell=True.
     """
-    if not ip_range:
-        local_ip = get_default_gateway_ip()
-        # Create a simple /24 subnet string based on local IP
-        ip_range = f"{local_ip.rsplit('.', 1)[0]}.0/24"
-        
-    print(f"[SCENT] Sniffing network with Scapy on subnet: {ip_range}")
+    system = platform.system()
     devices = []
 
     try:
-        # Create an ARP request packet
-        arp_request = ARP(pdst=ip_range)
-        # Create an Ethernet frame directed to the broadcast MAC address
-        broadcast_ether = Ether(dst="ff:ff:ff:ff:ff:ff")
-        # Combine the Ethernet frame and ARP request
-        packet = broadcast_ether / arp_request
+        # SECURITY: Never use shell=True. Pass args as a list.
+        if system == "Windows":
+            cmd = ["arp", "-a"]
+        else:
+            # Linux/macOS
+            cmd = ["arp", "-n"]
 
-        # Send the packet and receive responses
-        # timeout controls how long to wait for a response
-        answered, _ = srp(packet, timeout=2, verbose=0)
-
-        for sent, received in answered:
-            # Scent level calculation is simplified here.
-            # In a real IPS, it would compare MACs against a known/trusted list.
-            # Here we assign a baseline threat level based on the fact it's an unknown device.
-            scent_level = 50 
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=10,    # Prevent hanging
+            shell=False    # SECURITY: shell=False prevents injection
+        )
+        output = result.stdout
+        
+        # Regex to extract IP and MAC from the arp table output
+        ip_mac_pattern = re.compile(
+            r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+[\w:()\-]+\s+([0-9a-fA-F:]{11,17})"
+        )
+        
+        for match in ip_mac_pattern.finditer(output):
+            ip = match.group(1)
+            mac = match.group(2)
+            # Assign threat level: router (.1) is trusted, rest are unknown
+            scent_level = 10 if ip.endswith(".1") else 50
+            devices.append({"ip": ip, "mac": mac, "scent_level": scent_level})
             
-            # If the IP ends in .1, it's usually the router, mark as lower threat
-            if received.psrc.endswith(".1"):
-                scent_level = 10
-                
-            devices.append({
-                "ip": received.psrc,
-                "mac": received.hwsrc,
-                "scent_level": scent_level
-            })
-            
-    except PermissionError:
-        print("[ERROR] Scapy requires Root/Administrator privileges to send ARP packets.")
-        # Fallback to simulated data if permissions fail, so the UI doesn't break entirely
-        print("[SCENT] Falling back to simulated network data...")
-        return [
-            {"ip": "192.168.1.1", "mac": "00:11:22:33:44:55", "scent_level": 10},
-            {"ip": "192.168.1.104", "mac": "AA:BB:CC:DD:EE:FF", "scent_level": 40},
-            {"ip": "ERROR_NO_ROOT", "mac": "Permission Denied", "scent_level": 100}
-        ]
+    except FileNotFoundError:
+        print("[SCENT] 'arp' command not found on this system.")
+    except subprocess.TimeoutExpired:
+        print("[SCENT] ARP scan timed out.")
     except Exception as e:
-         print(f"[ERROR] Network scan failed: {e}")
+        print(f"[SCENT] Error reading ARP table: {e}")
 
+    return devices
+
+def scan_network():
+    """
+    Returns devices discovered from the system ARP table.
+    No root privileges required. No raw packet injection.
+    Pure stdlib: subprocess + socket + re.
+    """
+    subnet, local_ip = get_local_subnet()
+    print(f"[SCENT] Reading ARP table for subnet: {subnet}.0/24")
+    devices = parse_arp_table()
+    print(f"[SCENT] Found {len(devices)} devices.")
     return devices
