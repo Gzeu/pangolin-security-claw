@@ -3,3 +3,4 @@ uvicorn
 psutil
 scapy
 pycryptodome
+sqlalchemy

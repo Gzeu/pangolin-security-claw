@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import HexButton from './components/HexButton';
+import ScaleCard from './components/ScaleCard';
 import './index.css';
 
 export default function App() {
@@ -55,15 +57,22 @@ export default function App() {
       )}
 
       <div className="flex flex-wrap gap-6 mb-12">
-        <button onClick={triggerScent} className="hex-button glassmorphism px-8 py-4 font-semibold text-[#cbb8a9]">
-          [ Scent Module ] Network Scan
-        </button>
-        <button onClick={triggerCurlUp} className="hex-button glassmorphism px-8 py-4 font-semibold text-red-400 border border-red-900/30">
-          [ Curl-Up Module ] Defensive Arming
-        </button>
-        <button onClick={triggerLongTongue} className="hex-button glassmorphism px-8 py-4 font-semibold text-blue-400 border border-blue-900/30">
-          [ Long Tongue ] Deep Search
-        </button>
+        <HexButton 
+          onClick={triggerScent} 
+          label="[ Scent Module ] Network Scan" 
+        />
+        <HexButton 
+          onClick={triggerCurlUp} 
+          label="[ Curl-Up Module ] Defensive Arming" 
+          colorClass="text-red-400" 
+          borderClass="border border-red-900/30" 
+        />
+        <HexButton 
+          onClick={triggerLongTongue} 
+          label="[ Long Tongue ] Deep Search" 
+          colorClass="text-blue-400" 
+          borderClass="border border-blue-900/30" 
+        />
       </div>
 
       {leaks.length > 0 && (
@@ -83,22 +92,14 @@ export default function App() {
 
       <h2 className="text-2xl font-bold text-[#a88a75] mb-4">Network Radar (Scent)</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {devices.map((dev, index) => {
-          const dangerColor = dev.scent_level > 70 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.1)';
-          return (
-            <div key={index} className="scale-card glassmorphism p-6 relative overflow-hidden" style={{ backgroundColor: dangerColor }}>
-              <div className="absolute top-0 right-0 p-2 opacity-50 text-6xl">⬡</div>
-              <h3 className="text-xl font-bold text-white mb-2">{dev.ip}</h3>
-              <p className="text-sm text-gray-400 font-mono mb-4">{dev.mac}</p>
-              <div className="mt-4">
-                <span className="text-xs uppercase tracking-widest text-gray-500">Scent Level</span>
-                <div className="w-full bg-black/40 h-2 rounded-full mt-1">
-                  <div className={`h-full rounded-full ${dev.scent_level > 70 ? 'bg-red-500' : 'bg-[#a88a75]'}`} style={{ width: `${dev.scent_level}%` }}></div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {devices.map((dev, index) => (
+          <ScaleCard 
+            key={index}
+            ip={dev.ip} 
+            mac={dev.mac} 
+            scentLevel={dev.scent_level} 
+          />
+        ))}
       </div>
     </div>
   );

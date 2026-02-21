@@ -1,10 +1,10 @@
 {
   "name": "Pangolin Guard",
   "slug": "pangolin-security-claw",
-  "version": "1.1.0",
-  "description": "Biomimetic security dashboard skill for Pangolin-Guard OS. Protects, scans networks, encrypts files, and quarantines invasive processes.",
+  "version": "1.2.0",
+  "description": "Biomimetic security dashboard skill for Pangolin-Guard OS. Protects, scans networks, encrypts files, and quarantines invasive processes. Requires FastAPI backend running on port 8000.",
   "author": "Gzeu",
   "permissions": ["network", "shell", "filesystem"],
   "entrypoint": "index.js",
-  "tags": ["security", "dashboard", "api", "monitoring", "encryption"]
+  "tags": ["security", "dashboard", "api", "monitoring", "encryption", "agent"]
 }
