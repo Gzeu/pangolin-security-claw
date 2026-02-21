@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HexButton from './components/HexButton';
 import ScaleCard from './components/ScaleCard';
+import ScalesPanel from './components/ScalesPanel';
 import './index.css';
 
 export default function App() {
@@ -39,7 +40,7 @@ export default function App() {
 
   const triggerLongTongue = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/long-tongue/search?query=secrets');
+      const res = await fetch('http://localhost:8000/api/long-tongue/search?directory=.');
       const data = await res.json();
       setLeaks(data.leaks);
     } catch (err) {
@@ -75,31 +76,41 @@ export default function App() {
         />
       </div>
 
-      {leaks.length > 0 && (
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-[#a88a75] mb-4">Data Leaks Detected</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {leaks.map((leak, i) => (
-              <div key={i} className="glassmorphism p-4 border border-red-900/50">
-                <p className="text-red-400 font-mono text-sm">{leak.file}</p>
-                <p className="text-white mt-2">Type: {leak.leak_type}</p>
-                <p className="text-xs text-gray-500 mt-1">Confidence: {(leak.confidence_score * 100).toFixed(0)}%</p>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Left Column: Leaks and Crypto */}
+        <div className="xl:col-span-1 flex flex-col gap-8">
+          {leaks.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#a88a75] mb-4">Data Leaks Detected</h2>
+              <div className="flex flex-col gap-4">
+                {leaks.map((leak, i) => (
+                  <div key={i} className="glassmorphism p-4 border border-red-900/50">
+                    <p className="text-red-400 font-mono text-sm break-all">{leak.file}</p>
+                    <p className="text-white mt-2">Type: {leak.leak_type}</p>
+                    <p className="text-xs text-gray-500 mt-1">Confidence: {(leak.confidence_score * 100).toFixed(0)}%</p>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
+          
+          <ScalesPanel />
+        </div>
+
+        {/* Right Column: Network Radar */}
+        <div className="xl:col-span-2">
+           <h2 className="text-2xl font-bold text-[#a88a75] mb-4">Network Radar (Scent)</h2>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {devices.map((dev, index) => (
+              <ScaleCard 
+                key={index}
+                ip={dev.ip} 
+                mac={dev.mac} 
+                scentLevel={dev.scent_level} 
+              />
             ))}
           </div>
         </div>
-      )}
-
-      <h2 className="text-2xl font-bold text-[#a88a75] mb-4">Network Radar (Scent)</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {devices.map((dev, index) => (
-          <ScaleCard 
-            key={index}
-            ip={dev.ip} 
-            mac={dev.mac} 
-            scentLevel={dev.scent_level} 
-          />
-        ))}
       </div>
     </div>
   );

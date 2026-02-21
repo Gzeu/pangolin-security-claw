@@ -1,11 +1,13 @@
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from modules.curl_up import monitor_processes
 from modules.scent import scan_network
-from modules.scales import encrypt_file_scales
+from modules.scales import encrypt_file_scales, decrypt_file_scales
 from modules.long_tongue import search_leaks
 from database import init_db, get_connection
 import uuid
+import os
+import shutil
 
 # Initialize the SQLite database tables on startup
 init_db()
@@ -13,17 +15,19 @@ init_db()
 app = FastAPI(title="Pangolin-Guard OS API")
 
 # SECURITY: Restrict CORS to localhost only.
-# Never use allow_origins=["*"] in a security tool.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",   # Vite dev server
-        "http://localhost:3000",   # fallback CRA dev server
+        "http://localhost:5173",   
+        "http://localhost:3000",   
         "http://127.0.0.1:5173",
     ],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/api/scent/scan")
 def trigger_scent():
@@ -44,26 +48,52 @@ def activate_curl_up(background_tasks: BackgroundTasks):
     return {"status": "ARMORED", "message": "Pangolin entered defensive mode (Curl-Up)."}
 
 @app.post("/api/scales/encrypt")
-def trigger_scales(file_path: str = "default_document.txt"):
-    # SECURITY: Sanitize file path to prevent path traversal attacks
-    import os
-    safe_path = os.path.normpath(os.path.join(os.getcwd(), file_path))
-    if not safe_path.startswith(os.getcwd()):
-        return {"status": "ERROR", "message": "Path traversal attempt detected and blocked."}
-    result = encrypt_file_scales(safe_path)
+def trigger_scales_encrypt(file: UploadFile = File(...)):
+    # Save the uploaded file temporarily
+    safe_filename = os.path.basename(file.filename)
+    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    result = encrypt_file_scales(file_path)
+    
+    if result.get("status") == "ERROR":
+         return result
+         
     conn = get_connection()
     conn.execute(
         "INSERT INTO encrypted_scales (id, filename, total_chunks, status) VALUES (?, ?, ?, ?)",
-        (str(uuid.uuid4()), file_path, result["total_scales"], "ARMORED")
+        (str(uuid.uuid4()), safe_filename, result["total_scales"], "ARMORED")
     )
     conn.commit()
     conn.close()
     return {"status": "ENCRYPTED", "details": result}
 
+@app.post("/api/scales/decrypt")
+def trigger_scales_decrypt(file: UploadFile = File(...)):
+    safe_filename = os.path.basename(file.filename)
+    file_path = os.path.join(UPLOAD_DIR, safe_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    result = decrypt_file_scales(file_path)
+    
+    if result.get("status") == "ERROR":
+         return result
+         
+    conn = get_connection()
+    conn.execute(
+        "UPDATE encrypted_scales SET status = 'UNROLLED' WHERE filename = ?",
+        (safe_filename[:-9],) # Remove .pangolin for query
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "UNROLLED", "details": result}
+
 @app.get("/api/long-tongue/search")
 def trigger_long_tongue(directory: str = "."):
-    # SECURITY: Sanitize directory path to prevent path traversal
-    import os
     safe_dir = os.path.normpath(os.path.join(os.getcwd(), directory))
     if not safe_dir.startswith(os.getcwd()):
         return {"status": "ERROR", "message": "Path traversal attempt detected and blocked."}
