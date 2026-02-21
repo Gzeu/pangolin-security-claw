@@ -2,7 +2,7 @@ from scapy.all import srp, Ether, ARP
 import random
 
 def scan_network(ip_range: str):
-    print(f"[SCENT] Adulmec reteaua: {ip_range}")
+    print(f"[SCENT] Sniffing network: {ip_range}")
     devices = []
     for i in range(1, 6):
         scent_level = random.randint(10, 100) 
