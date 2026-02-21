@@ -1,26 +1,6 @@
 <div align="center">
 
-```
-
-  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-  ░                                                   ░
-  ░      /\_____/\      PANGOLIN                      ░
-  ░     /  o   o  \     SECURITY                      ░
-  ░    ( ==  ^  == )    CLAW                           ░
-  ░     )  _____  (                                   ░
-  ░    (  (     )  )   ██████╗██╗      █████╗ ██╗    ░
-  ░   ( \ |▓▓▓▓▓| / ) ██╔════╝██║     ██╔══██╗██║   ░
-  ░    \_)       (_/  ██║     ██║     ███████║██║    ░
-  ░       /|||\       ██║     ██║     ██╔══██║██║    ░
-  ░      / ||| \      ╚██████╗███████╗██║  ██║███████╗░
-  ░   __(  |||  )__    ╚═════╝╚══════╝╚═╝  ╚═╝╚══════╝░
-  ░  /  \___|___/  \                                  ░
-  ░ | SCALES  CURL  |  [ ARMORED ] [ STEALTH ] [AI]  ░
-  ░  \______________/                                  ░
-  ░                  >>> OpenClaw Skill v1.2 <<<      ░
-  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-
-```
+<img src="assets/logo.png" alt="Pangolin Security Claw" width="600"/>
 
 # Pangolin Security Claw
 
@@ -63,26 +43,26 @@ It draws its entire architecture from the biology of the pangolin, mapping each 
 
 ```
 pangolin-security-claw/
-├── backend/                     # FastAPI — The Pangolin's nervous system
-│   ├── main.py                  # API entrypoint & CORS (localhost only)
-│   ├── database.py              # SQLite3 stdlib — zero ORM overhead
-│   ├── models.py                # EncryptedScale | ThreatRadar | DataLeak
+├── backend/                  # FastAPI — The Pangolin's nervous system
+│   ├── main.py               # API entrypoint & CORS (localhost only)
+│   ├── database.py           # SQLite3 stdlib — zero ORM overhead
+│   ├── models.py             # EncryptedScale | ThreatRadar | DataLeak
 │   ├── modules/
-│   │   ├── scales.py            # AES-256-GCM + PBKDF2 + HKDF + secure wipe
-│   │   ├── curl_up.py           # psutil watchdog — path-based whitelist
-│   │   ├── long_tongue.py       # Regex leak scanner — line-by-line, 5MB cap
-│   │   └── scent.py             # ARP cache reader — no root required
-│   └── requirements.txt         # Only 4 pinned dependencies
-├── frontend/                    # React + Tailwind — The Pangolin's skin
+│   │   ├── scales.py         # AES-256-GCM + PBKDF2 + HKDF + secure wipe
+│   │   ├── curl_up.py        # psutil watchdog — path-based whitelist
+│   │   ├── long_tongue.py    # Regex leak scanner — line-by-line, 5MB cap
+│   │   └── scent.py          # ARP cache reader — no root required
+│   └── requirements.txt      # Only 4 pinned dependencies
+├── frontend/                 # React + Tailwind — The Pangolin's skin
 │   └── src/
-│       ├── App.jsx              # Layout + Stealth Mode (Shift+S)
+│       ├── App.jsx           # Layout + Stealth Mode (Shift+S)
 │       └── components/
-│           ├── HexButton.jsx    # Hexagonal clip-path buttons
-│           ├── ScaleCard.jsx    # Danger gradient network cards
-│           └── ScalesPanel.jsx  # Drag & Drop encrypt/decrypt UI
-└── openclaw-skill/              # The Pangolin's instinct — NLP Agent
-    ├── skill.json               # Skill metadata & network permissions
-    └── index.js                 # Native fetch only — zero npm deps
+│           ├── HexButton.jsx      # Hexagonal clip-path buttons
+│           ├── ScaleCard.jsx      # Danger gradient network cards
+│           └── ScalesPanel.jsx    # Drag & Drop encrypt/decrypt UI
+└── openclaw-skill/           # The Pangolin's instinct — NLP Agent
+    ├── skill.json            # Skill metadata & network permissions
+    └── index.js              # Native fetch only — zero npm deps
 ```
 
 ---
@@ -92,16 +72,17 @@ pangolin-security-claw/
 ```
 [ DEPENDENCY SURFACE — MINIMAL BY DESIGN ]
 
-  fastapi==0.111.0      → API framework
-  uvicorn==0.30.1       → ASGI server
-  psutil==5.9.8         → Process inspection
-  pycryptodome==3.20.0  → AES-256-GCM cryptography
+fastapi==0.111.0      → API framework
+uvicorn==0.30.1       → ASGI server
+psutil==5.9.8         → Process inspection
+pycryptodome==3.20.0  → AES-256-GCM cryptography
 
-  Everything else: Python stdlib only.
-  No SQLAlchemy. No Scapy. No axios.
+Everything else: Python stdlib only.
+No SQLAlchemy. No Scapy. No axios.
 ```
 
 **Core hardening decisions:**
+
 - CORS restricted to `localhost:5173` and `localhost:3000` only — no wildcard
 - File uploads use `uuid4` prefixes to prevent race conditions
 - Long Tongue reads files **line-by-line** with a **5MB hard cap** — no RAM bombs
@@ -120,8 +101,7 @@ pangolin-security-claw/
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload
-# API running at http://localhost:8000
+uvicorn main:app --reload  # API running at http://localhost:8000
 ```
 
 > Note: `Scent` module reads the system ARP cache and does **not** require root/administrator.
@@ -131,8 +111,7 @@ uvicorn main:app --reload
 ```bash
 cd frontend
 npm install
-npm run dev
-# Dashboard running at http://localhost:5173
+npm run dev  # Dashboard running at http://localhost:5173
 ```
 
 ### 3. OpenClaw Skill (via ClawHub)
@@ -144,10 +123,10 @@ npx clawhub@latest install pangolin-security-claw
 **Natural Language Commands:**
 
 ```
-"Claw, scan the network"          → triggers Scent ARP sweep
-"Claw, activate panic mode"       → arms Curl-Up CPU watchdog
-"Claw, search for leaks"          → runs Long Tongue regex scan
-"Claw, encrypt file report.pdf"   → calls Scales AES-256 endpoint
+"Claw, scan the network"       → triggers Scent ARP sweep
+"Claw, activate panic mode"    → arms Curl-Up CPU watchdog
+"Claw, search for leaks"       → runs Long Tongue regex scan
+"Claw, encrypt file report.pdf" → calls Scales AES-256 endpoint
 ```
 
 ---
@@ -155,6 +134,7 @@ npx clawhub@latest install pangolin-security-claw
 ## Stealth Mode
 
 Press `Shift + S` anywhere in the dashboard to enter **Stealth Mode**:
+
 - UI opacity drops to **10%**
 - All panel titles are hidden
 - Application becomes visually undetectable at a glance
@@ -165,15 +145,19 @@ Press `Shift + S` anywhere in the dashboard to enter **Stealth Mode**:
 ## Modules At a Glance
 
 ### ⬡ Scales — Layered File Encryption
+
 Files are split into **64KB chunks** (scales). Each scale receives a unique AES-256-GCM key derived via HKDF from a PBKDF2 master. Output is a `.pangolin` binary file. Decryption requires the original password.
 
 ### 👃 Scent — Network Threat Radar
+
 Reads the OS ARP cache to discover live devices on the subnet. Each device is assigned a **scent level (1–100)** visualized as a color gradient: `#22c55e` (safe) → `#ef4444` (alert).
 
 ### 🔴 Curl-Up — CPU Panic Watchdog
+
 Monitors all running processes. Any unknown executable exceeding **80% CPU** is immediately suspended and flagged. Uses absolute path verification — not process name — to prevent whitelist bypass.
 
 ### 👅 Long Tongue — Credential Leak Scanner
+
 Scans `.env`, `.log`, and `.json` files with high-precision regex patterns for:
 `AWS_ACCESS_KEY` · `GITHUB_TOKEN` · `STRIPE_KEY` · `PASSWORD=` · `API_KEY=`
 
@@ -196,6 +180,7 @@ Scans `.env`, `.log`, and `.json` files with high-precision regex patterns for:
 ## Contributing
 
 Open to PRs for new **organ modules**. Ideas:
+
 - `Ear` — passive traffic listener (pcap-based)
 - `Burrow` — encrypted local vault for secrets
 - `Baby Pangolin` — lightweight CLI-only version
@@ -204,10 +189,5 @@ Please read [`SECURITY.md`](SECURITY.md) before contributing.
 
 ---
 
-<div align="center">
-
 **Built with the instincts of the most armored mammal on Earth.**
-
 `pangolin-security-claw` · MIT License · OpenClaw Ecosystem
-
-</div>
