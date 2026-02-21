@@ -31,7 +31,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def trigger_scent():
     results = scan_network()
     conn = get_connection()
-    # [FIXED: Unbounded DB growth. Clean old records before inserting new network state]
     conn.execute("DELETE FROM threat_radar")
     
     for dev in results:
@@ -50,7 +49,6 @@ def activate_curl_up(background_tasks: BackgroundTasks):
 
 @app.post("/api/scales/encrypt")
 def trigger_scales_encrypt(file: UploadFile = File(...)):
-    # [FIXED: Prevent insecure uploads / race conditions using UUID prefixing]
     safe_filename = f"{uuid.uuid4().hex[:8]}_{os.path.basename(file.filename)}"
     file_path = os.path.join(UPLOAD_DIR, safe_filename)
     
@@ -85,7 +83,6 @@ def trigger_scales_decrypt(file: UploadFile = File(...)):
          return result
          
     conn = get_connection()
-    # Strip the .pangolin from the matched filename in UI
     original_name = file.filename[:-9] if file.filename.endswith(".pangolin") else file.filename
     conn.execute(
         "UPDATE encrypted_scales SET status = 'UNROLLED' WHERE filename LIKE ?",
@@ -103,7 +100,6 @@ def trigger_long_tongue(directory: str = "."):
     results = search_leaks(safe_dir)
     
     conn = get_connection()
-    # [FIXED: Unbounded DB growth. Wipe previous leak scans]
     conn.execute("DELETE FROM data_leaks")
     
     for leak in results:

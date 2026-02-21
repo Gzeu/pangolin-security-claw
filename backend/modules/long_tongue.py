@@ -12,14 +12,13 @@ LEAK_PATTERNS = {
 
 IGNORE_DIRS = {".git", "node_modules", "venv", "__pycache__", "build", "dist", ".venv"}
 SCANNABLE_EXTENSIONS = {".env", ".json", ".log", ".yaml", ".yml", ".txt", ".py", ".js"}
-MAX_FILE_SIZE = 5 * 1024 * 1024  # [FIXED: 5MB strict limit to prevent RAM exhaustion DoS]
+MAX_FILE_SIZE = 5 * 1024 * 1024
 
 def search_leaks(target_directory: str = "."):
     print(f"[LONG TONGUE] Scanning directory: {target_directory}")
     results = []
     seen = set()
 
-    # [FIXED: Explicit followlinks=False to prevent infinite symlink looping]
     for root, dirs, files in os.walk(target_directory, followlinks=False):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
 
@@ -31,18 +30,16 @@ def search_leaks(target_directory: str = "."):
             file_path = os.path.join(root, file)
             
             if os.path.islink(file_path):
-                continue # Skip explicit symlink files
+                continue 
 
             try:
-                # Limit file size strictly
                 if os.path.getsize(file_path) > MAX_FILE_SIZE:
                     continue 
 
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    # [FIXED: Read line-by-line to prevent massive memory spikes and mitigate ReDoS]
                     for line in f:
                         if len(line) > 2000:
-                            continue # Skip highly minified/encoded lines which trigger ReDoS
+                            continue 
                             
                         for leak_type, pattern in LEAK_PATTERNS.items():
                             if pattern.search(line):

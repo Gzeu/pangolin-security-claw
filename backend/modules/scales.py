@@ -6,7 +6,7 @@ from Crypto.Protocol.KDF import PBKDF2, HKDF
 from Crypto.Hash import SHA256
 
 CHUNK_SIZE = 1024 * 64  
-MAX_CHUNK_READ = CHUNK_SIZE + 64 # Bound maximum memory allocation to prevent DoS
+MAX_CHUNK_READ = CHUNK_SIZE + 64 
 
 def secure_delete(file_path: str):
     """Overwrites file with random bytes before deletion to prevent forensic recovery."""
@@ -16,20 +16,15 @@ def secure_delete(file_path: str):
             f.write(os.urandom(length))
         os.remove(file_path)
     except Exception:
-        pass # Fallback if permissions or file locks prevent overwrite
+        pass 
 
 def encrypt_file_scales(file_path: str, password: str = "PangolinStrong123!"):
-    """
-    Encrypts a file securely using PBKDF2 for key derivation and HKDF for layer keys.
-    In a production UI, the password parameter would be provided by the user.
-    """
     if not os.path.exists(file_path):
         return {"status": "ERROR", "message": "File not found."}
 
     print(f"[SCALES] Applying armored scales to: {file_path}")
     output_path = f"{file_path}.pangolin"
     
-    # [FIXED: PBKDF2 Password Derivation instead of random plaintext key]
     salt = get_random_bytes(16)
     master_key = PBKDF2(password, salt, 32, count=200000, hmac_hash_module=SHA256)
     
@@ -38,7 +33,6 @@ def encrypt_file_scales(file_path: str, password: str = "PangolinStrong123!"):
 
     try:
         with open(file_path, "rb") as infile, open(output_path, "wb") as outfile:
-            # Header format: MAGIC (11) + SALT (16)
             outfile.write(b"PANGOLIN_V2")
             outfile.write(salt)
             
@@ -47,7 +41,6 @@ def encrypt_file_scales(file_path: str, password: str = "PangolinStrong123!"):
                 if not chunk:
                     break
                 
-                # [FIXED: HKDF used for cryptographically secure layer key derivation]
                 layer_key = HKDF(master_key, 32, salt=salt, context=str(total_chunks).encode(), hashmod=SHA256)
                 cipher = AES.new(layer_key, AES.MODE_GCM)
                 
@@ -67,7 +60,6 @@ def encrypt_file_scales(file_path: str, password: str = "PangolinStrong123!"):
                 })
                 total_chunks += 1
                 
-        # [FIXED: Securely wipe the original file]
         secure_delete(file_path)
                 
     except Exception as e:
@@ -95,7 +87,6 @@ def decrypt_file_scales(encrypted_file_path: str, password: str = "PangolinStron
             if header != b"PANGOLIN_V2":
                  return {"status": "ERROR", "message": "Invalid file format or outdated version."}
                  
-            # [FIXED: Read salt and derive key instead of reading plaintext key]
             salt = infile.read(16)
             master_key = PBKDF2(password, salt, 32, count=200000, hmac_hash_module=SHA256)
             total_chunks = 0
@@ -114,7 +105,6 @@ def decrypt_file_scales(encrypted_file_path: str, password: str = "PangolinStron
                 ct_len_bytes = infile.read(4)
                 ct_len = int.from_bytes(ct_len_bytes, 'little')
                 
-                # [FIXED: Memory exhaustion DoS bound check]
                 if ct_len > MAX_CHUNK_READ:
                     return {"status": "ERROR", "message": "File corruption detected. Chunk exceeds memory limits."}
                     
